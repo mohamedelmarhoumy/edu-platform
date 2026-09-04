@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<title>اختبار تشغيل الفيديو المحمي</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #10233F; color: #fff; margin: 0; padding: 24px; }
+  .box { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 18px; }
+  label { display: block; font-size: 13px; margin: 14px 0 4px; }
+  input, textarea { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 6px; border: 1px solid #33507a; background: #0c1a2e; color: #fff; }
+  button { margin-top: 16px; padding: 10px 18px; background: #C9962E; border: none; border-radius: 6px; color: #1B1400; font-weight: 700; cursor: pointer; }
+  #player-wrap { margin-top: 20px; aspect-ratio: 16/9; background: #000; border-radius: 8px; overflow: hidden; }
+  iframe { width: 100%; height: 100%; border: 0; }
+  p.hint { font-size: 12px; color: #9fb0c9; }
+</style>
+</head>
+<body>
+  <div class="box">
+    <h1>🎬 اختبار مستقل لتشغيل الفيديو المحمي (VdoCipher)</h1>
+    <p class="hint">
+      الصق هنا قيمتَي otp و playbackInfo اللتين يعيدهما مسار
+      <code>POST /api/student/lessons/:id/playback</code> من الباك-إند
+      (احصل عليهما عبر Postman أو curl بعد تسجيل دخول طالب واشتراكه في الكورس).
+      هذه الصفحة مستقلة عن الفرونت إند الرئيسي — غرضها الوحيد التأكد
+      بصرياً من أن التشغيل مشفّر وأن العلامة المائية تظهر وتتحرك.
+    </p>
+
+    <label>OTP</label>
+    <input id="otp" placeholder="الصق قيمة otp هنا" />
+
+    <label>playbackInfo</label>
+    <textarea id="playbackInfo" rows="3" placeholder="الصق قيمة playbackInfo هنا"></textarea>
+
+    <button onclick="loadPlayer()">تشغيل الفيديو</button>
+
+    <div id="player-wrap"></div>
+  </div>
+
+<script>
+function loadPlayer() {
+  const otp = document.getElementById('otp').value.trim();
+  const playbackInfo = document.getElementById('playbackInfo').value.trim();
+  if (!otp || !playbackInfo) { alert('أدخل otp و playbackInfo أولاً'); return; }
+
+  // النمط الموصى به من VdoCipher لتضمين المشغّل عبر iframe.
+  // راجع التوثيق الرسمي إذا تغيّر شكل الرابط: https://www.vdocipher.com/docs/api/
+  const src = `https://player.vdocipher.com/v2/?otp=${encodeURIComponent(otp)}&playbackInfo=${encodeURIComponent(playbackInfo)}`;
+
+  document.getElementById('player-wrap').innerHTML =
+    `<iframe src="${src}" allow="encrypted-media" allowfullscreen></iframe>`;
+}
+</script>
+</body>
+</html>
