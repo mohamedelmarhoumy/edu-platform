@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 
 const authRoutes = require("./routes/authRoutes");
+const setupRoutes = require("./routes/setupRoutes");
 const studentRoutes = require("./routes/studentRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const superadminRoutes = require("./routes/superadminRoutes");
@@ -15,6 +16,7 @@ app.use(express.json({ limit: "2mb" }));
 app.get("/health", (req, res) => res.json({ status: "ok", time: new Date().toISOString() }));
 
 app.use("/api/auth", authRoutes);
+app.use("/api/setup", setupRoutes);
 app.use("/api/student", studentRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/superadmin", superadminRoutes);

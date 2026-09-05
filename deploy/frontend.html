@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>منصة نُخبة التعليمية</title>
+<style>
+  :root{
+    --navy:#10233F; --navy2:#16304F; --gold:#C9962E; --paper:#F7F6F2;
+    --ink:#14202B; --line:#EAE6DA; --muted:#6b6558; --ok:#2F7A4D; --bad:#B23B3B;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Tajawal',system-ui,-apple-system,sans-serif;background:var(--paper);color:var(--ink);}
+  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap');
+  .topbar{background:var(--navy);color:#fff;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .brand{font-weight:900;font-size:17px;display:flex;align-items:center;gap:8px;}
+  .apibox{display:flex;gap:6px;align-items:center;}
+  .apibox input{width:260px;max-width:50vw;padding:6px 10px;border-radius:6px;border:1px solid #33507a;background:#0c1a2e;color:#fff;font-size:12px;}
+  .apibox button{padding:6px 12px;border-radius:6px;border:none;background:var(--gold);color:#1B1400;font-weight:700;font-size:12px;cursor:pointer;}
+  .badge{font-size:11px;padding:3px 8px;border-radius:20px;}
+  .badge.ok{background:#1e3a2c;color:#7fd9a0;}
+  .badge.bad{background:#3a1e1e;color:#e79b9b;}
+  .container{max-width:920px;margin:0 auto;padding:24px 18px 80px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px;}
+  h1{font-size:20px;font-weight:900;color:var(--navy);margin:0 0 4px;}
+  h2{font-size:16px;font-weight:800;color:var(--navy);margin:0 0 12px;}
+  p.sub{color:var(--muted);font-size:13px;margin:0 0 16px;}
+  label{display:block;font-size:12.5px;font-weight:700;color:#3d3a30;margin-bottom:4px;}
+  input,select,textarea{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13.5px;margin-bottom:14px;font-family:inherit;background:#fff;color:var(--ink);}
+  button.btn{display:inline-flex;align-items:center;gap:6px;background:var(--navy);color:#fff;border:1px solid var(--navy);border-radius:8px;padding:9px 16px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+  button.btn.gold{background:var(--gold);border-color:var(--gold);color:#1B1400;}
+  button.btn.ghost{background:transparent;color:var(--navy);border-color:var(--line);}
+  button.btn.danger{background:var(--bad);border-color:var(--bad);}
+  button.btn:disabled{opacity:.5;cursor:not-allowed;}
+  .tabs{display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .tab{padding:9px 14px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;}
+  .tab.active{color:var(--navy);border-color:var(--gold);}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th{background:#F7F6F2;text-align:start;padding:8px 10px;color:var(--muted);}
+  td{padding:8px 10px;border-top:1px solid var(--line);}
+  .msg{font-size:12.5px;padding:9px 12px;border-radius:8px;margin-bottom:14px;}
+  .msg.err{background:#F6E7E7;color:var(--bad);}
+  .msg.ok{background:#E7F1EA;color:var(--ok);}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+  .row > div{flex:1;min-width:140px;}
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:#EFEDE5;color:#5B5648;margin-inline-end:6px;}
+  .lesson-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid #F0EDE3;font-size:13px;}
+  #player-frame-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;margin-top:14px;}
+  #player-frame-wrap iframe{width:100%;height:100%;border:0;}
+  .muted{color:var(--muted);font-size:12px;}
+  code{background:#F1F0EA;padding:2px 6px;border-radius:4px;font-size:12px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">🎓 منصة نُخبة — واجهة اختبار حقيقية</div>
+  <div class="apibox">
+    <input id="apiUrlInput" placeholder="https://your-api.up.railway.app" />
+    <button onclick="saveApiUrl()">حفظ</button>
+    <span id="apiStatusBadge" class="badge">غير متصل</span>
+  </div>
+</div>
+
+<div class="container" id="app"><!-- يُملأ ديناميكياً --></div>
+
+<script>
+/* ============================================================
+   حالة عامة بسيطة (بدون أي إطار عمل — HTML/CSS/JS خام فقط)
+   ============================================================ */
+const state = {
+  apiUrl: localStorage.getItem('apiUrl') || '',
+  teacherToken: sessionStorage.getItem('teacherToken') || null,
+  teacher: JSON.parse(sessionStorage.getItem('teacher') || 'null'),
+  studentToken: sessionStorage.getItem('studentToken') || null,
+  student: JSON.parse(sessionStorage.getItem('student') || 'null'),
+  view: 'home',
+  isSetup: null,
+  courses: [],
+  students: [],
+  promoCodes: [],
+  selected: {},
+  msg: null,
+};
+
+function deviceFingerprint() {
+  let fp = localStorage.getItem('deviceFingerprint');
+  if (!fp) {
+    fp = 'web-' + Math.random().toString(36).slice(2) + '-' + Date.now();
+    localStorage.setItem('deviceFingerprint', fp);
+  }
+  return fp;
+}
+
+async function api(path, { method = 'GET', body, token, headers = {} } = {}) {
+  const res = await fetch(state.apiUrl.replace(/\/$/, '') + path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {}),
+      ...headers,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let data = {};
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok) throw new Error(data.error || ('خطأ HTTP ' + res.status));
+  return data;
+}
+
+function saveApiUrl() {
+  const v = document.getElementById('apiUrlInput').value.trim();
+  state.apiUrl = v;
+  localStorage.setItem('apiUrl', v);
+  checkApi();
+}
+
+async function checkApi() {
+  const badge = document.getElementById('apiStatusBadge');
+  if (!state.apiUrl) { badge.textContent = 'أدخل رابط الـ API'; badge.className = 'badge bad'; return; }
+  try {
+    await api('/health');
+    badge.textContent = 'متصل ✓'; badge.className = 'badge ok';
+    const s = await api('/api/setup/status');
+    state.isSetup = s.isSetup;
+    render();
+  } catch (e) {
+    badge.textContent = 'تعذّر الاتصال'; badge.className = 'badge bad';
+  }
+}
+
+function setMsg(text, type = 'err') { state.msg = { text, type }; render(); }
+function clearMsgAnd(fn) { return async (...args) => { state.msg = null; try { await fn(...args); } catch (e) { setMsg(e.message); } }; }
+
+function go(view, extra = {}) { state.view = view; Object.assign(state.selected, extra); state.msg = null; render(); }
+
+function logoutTeacher() { state.teacherToken = null; state.teacher = null; sessionStorage.removeItem('teacherToken'); sessionStorage.removeItem('teacher'); go('home'); }
+function logoutStudent() { state.studentToken = null; state.student = null; sessionStorage.removeItem('studentToken'); sessionStorage.removeItem('student'); go('home'); }
+
+/* ============================================================
+   شاشات: الإعداد الأول + تسجيل دخول المعلّم
+   ============================================================ */
+
+function viewHome() {
+  return `
+    <div class="card" style="text-align:center;">
+      <h1>مرحباً بك</h1>
+      <p class="sub">اختر الدخول كمعلّم لإدارة المحتوى، أو كطالب لتجربة المشاهدة والاختبارات.</p>
+      <button class="btn" onclick="go('${state.isSetup === false ? 'setup' : 'teacherLogin'}')">دخول كمعلّم</button>
+      <button class="btn gold" style="margin-inline-start:10px;" onclick="go('studentLogin')">دخول كطالب</button>
+      ${state.isSetup === false ? '<p class="muted" style="margin-top:14px;">لا يوجد حساب معلّم بعد — سيُطلب منك إنشاء أول حساب.</p>' : ''}
+    </div>`;
+}
+
+function viewSetup() {
+  return `
+    <div class="card">
+      <h2>إعداد أول حساب معلّم (مرة واحدة فقط)</h2>
+      ${msgHtml()}
+      <label>الاسم بالكامل</label><input id="s_name" />
+      <label>رقم الهاتف</label><input id="s_phone" dir="ltr" />
+      <label>البريد الإلكتروني</label><input id="s_email" dir="ltr" />
+      <label>كلمة المرور (8 أحرف على الأقل)</label><input id="s_password" type="password" />
+      <button class="btn gold" onclick="submitSetup()">إنشاء الحساب والدخول</button>
+    </div>`;
+}
+async function submitSetup() {
+  await clearMsgAnd(async () => {
+    const body = {
+      name: val('s_name'), phone: val('s_phone'), email: val('s_email'), password: val('s_password'),
+    };
+    await api('/api/setup/bootstrap-teacher', { method: 'POST', body });
+    setMsg('تم إنشاء الحساب بنجاح، سجّل الدخول الآن', 'ok');
+    state.isSetup = true;
+    go('teacherLogin');
+  })();
+}
+
+function viewTeacherLogin() {
+  return `
+    <div class="card">
+      <h2>تسجيل دخول المعلّم</h2>
+      ${msgHtml()}
+      <label>البريد الإلكتروني</label><input id="t_email" dir="ltr" />
+      <label>كلمة المرور</label><input id="t_password" type="password" />
+      <button class="btn" onclick="submitTeacherLogin()">دخول</button>
+    </div>`;
+}
+async function submitTeacherLogin() {
+  await clearMsgAnd(async () => {
+    const data = await api('/api/auth/teacher/login', { method: 'POST', body: { email: val('t_email'), password: val('t_password') } });
+    state.teacherToken = data.accessToken; state.teacher = data.teacher;
+    sessionStorage.setItem('teacherToken', data.accessToken);
+    sessionStorage.setItem('teacher', JSON.stringify(data.teacher));
+    localStorage.setItem('lastTeacherId', data.teacher.id);
+    go('admin');
+  })();
+}
+
+/* ============================================================
+   لوحة تحكم المعلّم
+   ============================================================ */
+
+function viewAdmin() {
+  const tab = state.selected.adminTab || 'content';
+  return `
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+      <div><b>${state.teacher.name}</b> <span class="muted">— معرّف المعلّم: <code>${state.teacher.id}</code></span></div>
+      <button class="btn ghost" onclick="logoutTeacher()">خروج</button>
+    </div>
+    <div class="tabs">
+      ${tabBtn('content','المحتوى وربط الفيديو')}
+      ${tabBtn('students','الطلاب')}
+      ${tabBtn('promos','أكواد التفعيل')}
+    </div>
+    ${msgHtml()}
+    <div id="tabBody">${tab === 'content' ? adminContentTab() : tab === 'students' ? adminStudentsTab() : adminPromosTab()}</div>
+  `;
+  function tabBtn(key, label) {
+    return `<div class="tab ${tab===key?'active':''}" onclick="go('admin',{adminTab:'${key}'})">${label}</div>`;
+  }
+}
+
+function adminContentTab() {
+  return `
+    <div class="card">
+      <h2>1) أنشئ كورساً</h2>
+      <div class="row">
+        <div><label>المادة</label><input id="c_subject" placeholder="مثال: الرياضيات" /></div>
+        <div><label>المرحلة الدراسية</label><input id="c_stage" placeholder="مثال: الصف الثالث الثانوي" /></div>
+        <div><button class="btn" onclick="createCourse()">إنشاء</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>الكورسات</h2>
+      <button class="btn ghost" onclick="loadCourses()" style="margin-bottom:12px;">تحديث القائمة</button>
+      ${(state.courses || []).map(c => courseBlock(c)).join('') || '<p class="muted">لا توجد كورسات بعد.</p>'}
+    </div>`;
+}
+
+function courseBlock(c) {
+  const sel = state.selected.courseId === c.id;
+  return `
+    <div style="border:1px solid var(--line);border-radius:9px;padding:12px 14px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="go('admin',{adminTab:'content', courseId: '${sel ? '' : c.id}'})">
+        <b>${c.subject}</b> <span class="muted">${c.stage}</span>
+      </div>
+      ${sel ? `
+        <div style="margin-top:12px;border-top:1px solid #F0EDE3;padding-top:12px;">
+          <div class="row">
+            <div><label>عنوان وحدة جديدة</label><input id="u_title_${c.id}" /></div>
+            <div><button class="btn ghost" onclick="createUnit('${c.id}')">إضافة وحدة</button></div>
+          </div>
+          <div id="unitsBox_${c.id}">جارٍ التحميل...</div>
+        </div>` : ''}
+    </div>`;
+}
+
+async function loadCourses() {
+  await clearMsgAnd(async () => {
+    state.courses = await api('/api/admin/courses', { token: state.teacherToken });
+    render();
+    for (const c of state.courses) if (state.selected.courseId === c.id) loadUnits(c.id);
+  })();
+}
+async function createCourse() {
+  await clearMsgAnd(async () => {
+    await api('/api/admin/courses', { method: 'POST', token: state.teacherToken, body: { subject: val('c_subject'), stage: val('c_stage') } });
+    setMsg('تم إنشاء الكورس', 'ok');
+    await loadCourses();
+  })();
+}
+async function createUnit(courseId) {
+  await clearMsgAnd(async () => {
+    await api(`/api/admin/courses/${courseId}/units`, { method: 'POST', token: state.teacherToken, body: { title: val('u_title_' + courseId) } });
+    await loadUnits(courseId);
+  })();
+}
+async function loadUnits(courseId) {
+  // لا يوجد مسار مباشر لعرض الوحدات فقط، فنعرضها ضمن نفس الكورس عبر إعادة استدعاء لائحة مبسطة محلية
+  const box = document.getElementById('unitsBox_' + courseId);
+  if (!box) return;
+  box.innerHTML = (state.units?.[courseId] || []).map(u => unitBlock(courseId, u)).join('') || '<p class="muted">أضف وحدة أولاً.</p>';
+}
+
+// تتبّع محلي بسيط للوحدات/الدروس التي أنشأناها في هذه الجلسة (الـ API لا يعيد شجرة كاملة لجهة المعلّم بعد v1)
+state.units = state.units || {};
+async function createUnitTracked() {}
+
+/* إعادة تعريف createUnit لتتبّع الوحدة محلياً بعد إنشائها */
+const _origCreateUnit = createUnit;
+window.createUnit = async function(courseId) {
+  await clearMsgAnd(async () => {
+    const unit = await api(`/api/admin/courses/${courseId}/units`, { method: 'POST', token: state.teacherToken, body: { title: val('u_title_' + courseId) } });
+    unit.lessons = [];
+    state.units[courseId] = [...(state.units[courseId] || []), unit];
+    render();
+    loadUnits(courseId);
+  })();
+};
+
+function unitBlock(courseId, unit) {
+  return `
+    <div style="margin-top:10px;padding:10px;background:#FAFAF7;border-radius:8px;">
+      <b style="font-size:13px;">${unit.title}</b>
+      <div class="row" style="margin-top:8px;">
+        <div><label>عنوان درس جديد</label><input id="l_title_${unit.id}" /></div>
+        <div><button class="btn ghost" onclick="createLesson('${courseId}','${unit.id}')">إضافة درس</button></div>
+      </div>
+      ${(unit.lessons || []).map(l => lessonBlock(l)).join('')}
+    </div>`;
+}
+
+async function createLesson(courseId, unitId) {
+  await clearMsgAnd(async () => {
+    const lesson = await api(`/api/admin/units/${unitId}/lessons`, { method: 'POST', token: state.teacherToken, body: { title: val('l_title_' + unitId) } });
+    const unit = state.units[courseId].find(u => u.id === unitId);
+    unit.lessons.push(lesson);
+    render();
+    loadUnits(courseId);
+  })();
+}
+
+function lessonBlock(lesson) {
+  return `
+    <div class="lesson-row">
+      <span>🎬 ${lesson.title} <span class="muted">(${lesson.vdocipher_video_id ? 'يوجد فيديو' : 'بدون فيديو بعد'})</span></span>
+      <button class="btn ghost" style="padding:4px 10px;font-size:11px;" onclick="openUploadPanel('${lesson.id}')">رفع/فحص فيديو</button>
+    </div>
+    <div id="uploadPanel_${lesson.id}"></div>`;
+}
+
+async function openUploadPanel(lessonId) {
+  const el = document.getElementById('uploadPanel_' + lessonId);
+  el.innerHTML = `
+    <div style="padding:10px;background:#FBF1DC;border-radius:8px;margin:8px 0;">
+      <label>اختر ملف الفيديو</label>
+      <input type="file" id="file_${lessonId}" accept="video/*" />
+      <button class="btn gold" onclick="uploadVideo('${lessonId}')">ابدأ الرفع إلى VdoCipher</button>
+      <div id="uploadStatus_${lessonId}" class="muted" style="margin-top:8px;"></div>
+    </div>`;
+}
+
+async function uploadVideo(lessonId) {
+  const statusEl = document.getElementById('uploadStatus_' + lessonId);
+  const fileInput = document.getElementById('file_' + lessonId);
+  const file = fileInput.files[0];
+  if (!file) { statusEl.textContent = 'اختر ملفاً أولاً'; return; }
+
+  try {
+    statusEl.textContent = 'جارٍ طلب رابط الرفع من الخادم...';
+    const creds = await api(`/api/admin/lessons/${lessonId}/upload-credentials`, { method: 'POST', token: state.teacherToken });
+
+    statusEl.textContent = 'جارٍ رفع الملف مباشرة إلى VdoCipher... (قد يستغرق دقائق حسب حجم الملف وسرعة الإنترنت)';
+    const form = new FormData();
+    for (const [k, v] of Object.entries(creds.clientPayload.parameters)) form.append(k, v);
+    form.append('file', file);
+
+    const uploadRes = await fetch(creds.clientPayload.uploadLink, { method: 'POST', body: form });
+    if (!uploadRes.ok) throw new Error('فشل الرفع، حالة HTTP: ' + uploadRes.status);
+
+    statusEl.textContent = 'تم الرفع! جارٍ انتظار معالجة الفيديو من VdoCipher (تحقق كل دقيقة)...';
+    pollVideoStatus(lessonId, statusEl);
+  } catch (e) {
+    statusEl.textContent = 'خطأ: ' + e.message;
+  }
+}
+
+async function pollVideoStatus(lessonId, statusEl) {
+  try {
+    const status = await api(`/api/admin/lessons/${lessonId}/video-status`, { token: state.teacherToken });
+    const s = status.status || status.clientData?.status || JSON.stringify(status);
+    statusEl.textContent = 'حالة الفيديو الحالية: ' + s;
+    if (String(s).toLowerCase() !== 'ready') {
+      setTimeout(() => pollVideoStatus(lessonId, statusEl), 15000);
+    } else {
+      statusEl.textContent = '✅ الفيديو جاهز الآن للتشغيل المحمي!';
+    }
+  } catch (e) {
+    statusEl.textContent = 'تعذّر التحقق من الحالة: ' + e.message;
+  }
+}
+
+/* ---------- تبويب الطلاب ---------- */
+function adminStudentsTab() {
+  return `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <h2 style="margin:0;">الطلاب</h2>
+        <button class="btn ghost" onclick="loadStudents()">تحديث</button>
+      </div>
+      <table>
+        <thead><tr><th>الاسم</th><th>الهاتف</th><th>الحالة</th><th>الجهاز</th><th>تفعيل اشتراك</th><th>إجراءات</th></tr></thead>
+        <tbody>
+          ${(state.students||[]).map(s => `
+            <tr>
+              <td>${s.name}</td>
+              <td dir="ltr">${s.phone}</td>
+              <td>${s.is_active ? '<span class="pill" style="background:#E7F1EA;color:var(--ok);">فعّال</span>' : '<span class="pill" style="background:#F6E7E7;color:var(--bad);">موقوف</span>'}</td>
+              <td class="muted">${s.device_label || '—'}</td>
+              <td>
+                <select id="enrollCourse_${s.id}" style="margin:0;padding:4px;font-size:11px;">
+                  ${(state.courses||[]).map(c => `<option value="${c.id}">${c.subject}</option>`).join('')}
+                </select>
+                <button class="btn gold" style="padding:4px 8px;font-size:11px;" onclick="enrollStudent('${s.id}')">تفعيل</button>
+              </td>
+              <td>
+                <button class="btn ghost" style="padding:4px 8px;font-size:11px;" onclick="toggleActive('${s.id}', ${!s.is_active})">${s.is_active ? 'إيقاف' : 'تفعيل'}</button>
+                <button class="btn ghost" style="padding:4px 8px;font-size:11px;" onclick="resetDevice('${s.id}')">فك الجهاز</button>
+              </td>
+            </tr>`).join('') || '<tr><td colspan="6" class="muted">لا يوجد طلاب بعد.</td></tr>'}
+        </tbody>
+      </table>
+    </div>`;
+}
+async function loadStudents() { await clearMsgAnd(async () => { state.students = await api('/api/admin/students', { token: state.teacherToken }); render(); })(); }
+async function toggleActive(id, isActive) { await clearMsgAnd(async () => { await api(`/api/admin/students/${id}/active`, { method: 'PATCH', token: state.teacherToken, body: { isActive } }); await loadStudents(); })(); }
+async function resetDevice(id) { await clearMsgAnd(async () => { await api(`/api/admin/students/${id}/reset-device`, { method: 'POST', token: state.teacherToken }); setMsg('تم فك ربط الجهاز', 'ok'); await loadStudents(); })(); }
+async function enrollStudent(studentId) {
+  await clearMsgAnd(async () => {
+    const courseId = val('enrollCourse_' + studentId);
+    const expiresAt = new Date(); expiresAt.setDate(expiresAt.getDate() + 90);
+    await api(`/api/admin/students/${studentId}/enrollment`, { method: 'POST', token: state.teacherToken, body: { courseId, isActive: true, expiresAt: expiresAt.toISOString() } });
+    setMsg('تم تفعيل اشتراك الطالب لمدة 90 يوماً', 'ok');
+    await loadStudents();
+  })();
+}
+
+/* ---------- تبويب أكواد التفعيل ---------- */
+function adminPromosTab() {
+  return `
+    <div class="card">
+      <h2>توليد أكواد تفعيل</h2>
+      <div class="row">
+        <div><label>الكورس</label><select id="promo_course">${(state.courses||[]).map(c=>`<option value="${c.id}">${c.subject}</option>`).join('')}</select></div>
+        <div><label>عدد الأيام</label><input id="promo_days" value="90" /></div>
+        <div><label>عدد الأكواد</label><input id="promo_count" value="1" /></div>
+        <div><button class="btn gold" onclick="generatePromo()">توليد</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;"><h2>الأكواد الحالية</h2><button class="btn ghost" onclick="loadPromos()">تحديث</button></div>
+      <table><thead><tr><th>الكود</th><th>الحالة</th></tr></thead>
+        <tbody>${(state.promoCodes||[]).map(p=>`<tr><td dir="ltr"><code>${p.code}</code></td><td>${p.is_used?'مستخدَم':'متاح'}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">لا توجد أكواد بعد</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+async function generatePromo() {
+  await clearMsgAnd(async () => {
+    await api('/api/admin/promo-codes', { method: 'POST', token: state.teacherToken, body: { courseId: val('promo_course'), accessDays: Number(val('promo_days')), count: Number(val('promo_count')) } });
+    setMsg('تم توليد الأكواد', 'ok');
+    await loadPromos();
+  })();
+}
+async function loadPromos() { await clearMsgAnd(async () => { state.promoCodes = await api('/api/admin/promo-codes', { token: state.teacherToken }); render(); })(); }
+
+/* ============================================================
+   بوابة الطالب
+   ============================================================ */
+function viewStudentLogin() {
+  const step = state.selected.studentStep || 'phone';
+  return `
+    <div class="card">
+      <h2>دخول الطالب</h2>
+      ${msgHtml()}
+      ${step === 'phone' ? `
+        <label>معرّف المعلّم (teacherId)</label><input id="st_teacherId" dir="ltr" value="${localStorage.getItem('lastTeacherId')||''}" />
+        <label>الاسم بالكامل</label><input id="st_name" />
+        <label>رقم الهاتف</label><input id="st_phone" dir="ltr" />
+        <button class="btn" onclick="requestStudentOtp()">إرسال كود التفعيل</button>
+      ` : `
+        <p class="muted">الكود يظهر في سجلات الخادم (Railway → Logs) لأن SMS تجريبي حالياً.</p>
+        <label>كود التفعيل</label><input id="st_code" dir="ltr" maxlength="4" />
+        <button class="btn" onclick="verifyStudentOtp()">تأكيد الدخول</button>
+      `}
+    </div>`;
+}
+async function requestStudentOtp() {
+  await clearMsgAnd(async () => {
+    state.selected.teacherId = val('st_teacherId');
+    state.selected.phone = val('st_phone');
+    state.selected.name = val('st_name');
+    await api('/api/auth/otp/request', { method: 'POST', body: { teacherId: state.selected.teacherId, phone: state.selected.phone, name: state.selected.name } });
+    go('studentLogin', { studentStep: 'otp' });
+  })();
+}
+async function verifyStudentOtp() {
+  await clearMsgAnd(async () => {
+    const data = await api('/api/auth/otp/verify', { method: 'POST', body: {
+      teacherId: state.selected.teacherId, phone: state.selected.phone, code: val('st_code'),
+      deviceFingerprint: deviceFingerprint(), deviceLabel: navigator.userAgent.slice(0, 40),
+    }});
+    state.studentToken = data.accessToken; state.student = data.student;
+    sessionStorage.setItem('studentToken', data.accessToken);
+    sessionStorage.setItem('student', JSON.stringify(data.student));
+    go('studentCourses');
+  })();
+}
+
+function viewStudentCourses() {
+  return `
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+      <div><b>${state.student.name}</b> <span class="muted" dir="ltr">${state.student.phone}</span></div>
+      <button class="btn ghost" onclick="logoutStudent()">خروج</button>
+    </div>
+    <div class="card">
+      <h2>تفعيل كود اشتراك</h2>
+      <div class="row"><div><input id="redeem_code" dir="ltr" placeholder="EDU-XXXXXX" /></div><div><button class="btn gold" onclick="redeemCode()">تفعيل</button></div></div>
+    </div>
+    ${msgHtml()}
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;"><h2>كورساتي</h2><button class="btn ghost" onclick="loadMyCourses()">تحديث</button></div>
+      <div id="myCoursesBox">${(state.myCourses||[]).map(courseStudentBlock).join('') || '<p class="muted">اضغط تحديث لعرض الكورسات.</p>'}</div>
+    </div>`;
+}
+async function redeemCode() {
+  await clearMsgAnd(async () => {
+    await api('/api/student/promo-codes/redeem', { method: 'POST', token: state.studentToken, body: { code: val('redeem_code') } });
+    setMsg('تم تفعيل الاشتراك بنجاح', 'ok');
+    await loadMyCourses();
+  })();
+}
+async function loadMyCourses() { await clearMsgAnd(async () => { state.myCourses = await api('/api/student/courses', { token: state.studentToken }); render(); })(); }
+function courseStudentBlock(c) {
+  return `<div style="border:1px solid var(--line);border-radius:9px;padding:12px;margin-bottom:10px;">
+    <b>${c.subject}</b> <span class="muted">${c.stage}</span>
+    ${(c.units||[]).map(u => `<div style="margin-top:8px;"><b style="font-size:12.5px;">${u.title}</b>
+      ${(u.lessons||[]).map(l => `<div class="lesson-row"><span>${l.watched?'✅':'▶️'} ${l.title}</span><button class="btn ghost" style="padding:4px 10px;font-size:11px;" onclick="playLesson('${l.id}')">تشغيل</button></div>`).join('')}
+    </div>`).join('')}
+  </div>`;
+}
+
+async function playLesson(lessonId) {
+  await clearMsgAnd(async () => {
+    const data = await api(`/api/student/lessons/${lessonId}/playback`, { method: 'POST', token: state.studentToken, headers: { 'x-device-fingerprint': deviceFingerprint() } });
+    state.selected.playback = data;
+    go('studentPlayer');
+  })();
+}
+
+function viewStudentPlayer() {
+  const pb = state.selected.playback;
+  const src = `https://player.vdocipher.com/v2/?otp=${encodeURIComponent(pb.otp)}&playbackInfo=${encodeURIComponent(pb.playbackInfo)}`;
+  return `
+    <button class="btn ghost" onclick="go('studentCourses')">← رجوع للكورسات</button>
+    <div class="card" style="margin-top:12px;">
+      <h2>تشغيل محمي — العلامة المائية تظهر باسمك ورقم هاتفك</h2>
+      <div id="player-frame-wrap"><iframe src="${src}" allow="encrypted-media" allowfullscreen></iframe></div>
+    </div>`;
+}
+
+/* ============================================================
+   أدوات مساعدة + الرسم
+   ============================================================ */
+function val(id) { return document.getElementById(id)?.value?.trim() || ''; }
+function msgHtml() { return state.msg ? `<div class="msg ${state.msg.type}">${state.msg.text}</div>` : ''; }
+
+function render() {
+  document.getElementById('apiUrlInput').value = state.apiUrl;
+  const app = document.getElementById('app');
+  if (!state.apiUrl) { app.innerHTML = '<div class="card"><h2>ابدأ هنا</h2><p class="sub">أدخل رابط الـ API في الأعلى واضغط "حفظ".</p></div>'; return; }
+
+  if (state.view === 'setup') return void (app.innerHTML = viewSetup());
+  if (state.view === 'teacherLogin') return void (app.innerHTML = viewTeacherLogin());
+  if (state.view === 'admin' && state.teacherToken) return void (app.innerHTML = viewAdmin());
+  if (state.view === 'studentLogin') return void (app.innerHTML = viewStudentLogin());
+  if (state.view === 'studentCourses' && state.studentToken) return void (app.innerHTML = viewStudentCourses());
+  if (state.view === 'studentPlayer' && state.selected.playback) return void (app.innerHTML = viewStudentPlayer());
+  app.innerHTML = viewHome();
+}
+
+document.getElementById('apiUrlInput').value = state.apiUrl;
+if (state.apiUrl) checkApi(); else render();
+</script>
+</body>
+</html>
