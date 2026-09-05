@@ -28,7 +28,9 @@ async function createUploadCredentials({ title, folderId } = {}) {
       ...(folderId ? { folderId } : {}),
     },
   });
-  // data = { videoId, clientPayload: { uploadLink, parameters, ... } }
+  // data = { videoId, clientPayload: { uploadLink, key, policy, "x-amz-*", ... } }
+  // ملاحظة: حقول clientPayload (عدا uploadLink) تُرسَل كما هي كحقول Form
+  // مباشرة عند رفع الملف — وليست متداخلة تحت أي مفتاح فرعي مثل "parameters".
   return data;
 }
 

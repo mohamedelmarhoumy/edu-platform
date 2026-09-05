@@ -24,10 +24,12 @@ app.use("/api/superadmin", superadminRoutes);
 // معالج أخطاء موحّد
 app.use((err, req, res, next) => {
   console.error(err);
-  const vdoError = err.response?.data;
-  res.status(err.status || 500).json({
-    error: "حدث خطأ في الخادم",
-    detail: process.env.NODE_ENV === "development" ? (vdoError || err.message) : undefined,
+  // إن كان الخطأ راجعاً من استدعاء VdoCipher، رسالته الحقيقية مفيدة
+  // للتشخيص الفوري من الواجهة نفسها بدل الاضطرار لمراجعة الـ Logs كل مرة.
+  const vdoMessage = err.response?.data?.message || err.response?.data?.error;
+  res.status(err.status || err.response?.status || 500).json({
+    error: vdoMessage ? `خطأ من VdoCipher: ${vdoMessage}` : "حدث خطأ في الخادم",
+    detail: process.env.NODE_ENV === "development" ? (err.response?.data || err.message) : undefined,
   });
 });
 

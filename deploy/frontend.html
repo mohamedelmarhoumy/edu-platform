@@ -353,10 +353,14 @@ async function uploadVideo(lessonId) {
 
     statusEl.textContent = 'جارٍ رفع الملف مباشرة إلى VdoCipher... (قد يستغرق دقائق حسب حجم الملف وسرعة الإنترنت)';
     const form = new FormData();
-    for (const [k, v] of Object.entries(creds.clientPayload.parameters)) form.append(k, v);
+    const payload = creds.clientPayload;
+    for (const [k, v] of Object.entries(payload)) {
+      if (k === 'uploadLink') continue; // هذا هو رابط الرفع نفسه، وليس حقلاً يُرسَل ضمن النموذج
+      form.append(k, v);
+    }
     form.append('file', file);
 
-    const uploadRes = await fetch(creds.clientPayload.uploadLink, { method: 'POST', body: form });
+    const uploadRes = await fetch(payload.uploadLink, { method: 'POST', body: form });
     if (!uploadRes.ok) throw new Error('فشل الرفع، حالة HTTP: ' + uploadRes.status);
 
     statusEl.textContent = 'تم الرفع! جارٍ انتظار معالجة الفيديو من VdoCipher (تحقق كل دقيقة)...';
