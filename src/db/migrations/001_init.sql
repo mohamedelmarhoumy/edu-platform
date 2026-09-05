@@ -8,7 +8,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- المعلّمون / أصحاب المحتوى (كل معلّم = مستأجر منطقي Tenant)
-CREATE TABLE IF NOT EXISTS teachers (
+CREATE TABLE teachers (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(150) NOT NULL,
   phone VARCHAR(20) UNIQUE NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS teachers (
 );
 
 -- الطلاب (كل طالب مرتبط بمعلّم واحد يمثّل الجهة التي اشترك عندها)
-CREATE TABLE IF NOT EXISTS students (
+CREATE TABLE students (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
   name VARCHAR(150) NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS students (
 );
 
 -- أكواد التحقق المؤقتة (OTP) لتسجيل الدخول
-CREATE TABLE IF NOT EXISTS otp_codes (
+CREATE TABLE otp_codes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   phone VARCHAR(20) NOT NULL,
   teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
@@ -42,10 +42,10 @@ CREATE TABLE IF NOT EXISTS otp_codes (
   attempts SMALLINT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_otp_phone_teacher ON otp_codes (phone, teacher_id);
+CREATE INDEX idx_otp_phone_teacher ON otp_codes (phone, teacher_id);
 
 -- الجهاز الوحيد المسموح به لكل طالب (Device Binding)
-CREATE TABLE IF NOT EXISTS student_devices (
+CREATE TABLE student_devices (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   student_id UUID NOT NULL UNIQUE REFERENCES students(id) ON DELETE CASCADE,
   device_fingerprint TEXT NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS student_devices (
 );
 
 -- جلسات الدخول النشطة (لمنع أكثر من جلسة متزامنة لكل طالب)
-CREATE TABLE IF NOT EXISTS student_sessions (
+CREATE TABLE student_sessions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   student_id UUID NOT NULL UNIQUE REFERENCES students(id) ON DELETE CASCADE,
   refresh_token_hash TEXT NOT NULL,
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS student_sessions (
 );
 
 -- الكورسات (مادة)
-CREATE TABLE IF NOT EXISTS courses (
+CREATE TABLE courses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
   subject VARCHAR(150) NOT NULL,
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS courses (
 );
 
 -- الوحدات
-CREATE TABLE IF NOT EXISTS units (
+CREATE TABLE units (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
   title VARCHAR(200) NOT NULL,
@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS units (
 );
 
 -- الدروس
-CREATE TABLE IF NOT EXISTS lessons (
+CREATE TABLE lessons (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   unit_id UUID NOT NULL REFERENCES units(id) ON DELETE CASCADE,
   title VARCHAR(200) NOT NULL,
@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS lessons (
 );
 
 -- ملفات مرفقة بالدرس (PDF واجبات/ملخصات)
-CREATE TABLE IF NOT EXISTS lesson_attachments (
+CREATE TABLE lesson_attachments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
   file_url TEXT NOT NULL,
@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS lesson_attachments (
 );
 
 -- اشتراك الطالب في كورس معيّن
-CREATE TABLE IF NOT EXISTS enrollments (
+CREATE TABLE enrollments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS enrollments (
 );
 
 -- تتبّع مشاهدة كل درس (لعدد المرات المسموح بها ونسبة الإنجاز)
-CREATE TABLE IF NOT EXISTS lesson_views (
+CREATE TABLE lesson_views (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS lesson_views (
 );
 
 -- سجل كل عملية توليد رابط تشغيل (Audit Log) — لأغراض المراجعة الأمنية
-CREATE TABLE IF NOT EXISTS playback_logs (
+CREATE TABLE playback_logs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
@@ -140,7 +140,7 @@ CREATE TABLE IF NOT EXISTS playback_logs (
 );
 
 -- بنك الأسئلة
-CREATE TABLE IF NOT EXISTS questions (
+CREATE TABLE questions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
   course_id UUID REFERENCES courses(id) ON DELETE SET NULL,
@@ -151,7 +151,7 @@ CREATE TABLE IF NOT EXISTS questions (
 );
 
 -- الاختبارات
-CREATE TABLE IF NOT EXISTS quizzes (
+CREATE TABLE quizzes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   lesson_id UUID REFERENCES lessons(id) ON DELETE CASCADE,
   title VARCHAR(200) NOT NULL,
@@ -161,14 +161,14 @@ CREATE TABLE IF NOT EXISTS quizzes (
   show_answers_after_submit BOOLEAN NOT NULL DEFAULT TRUE
 );
 
-CREATE TABLE IF NOT EXISTS quiz_questions (
+CREATE TABLE quiz_questions (
   quiz_id UUID NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
   question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
   sort_order INT NOT NULL DEFAULT 0,
   PRIMARY KEY (quiz_id, question_id)
 );
 
-CREATE TABLE IF NOT EXISTS quiz_attempts (
+CREATE TABLE quiz_attempts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   quiz_id UUID NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
   student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
@@ -178,7 +178,7 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
 );
 
 -- أكواد التفعيل (Promo / Activation Codes)
-CREATE TABLE IF NOT EXISTS promo_codes (
+CREATE TABLE promo_codes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
   code VARCHAR(30) UNIQUE NOT NULL,
@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS promo_codes (
 );
 
 -- المدفوعات (تُملأ عند ربط بوابة الدفع في مرحلة لاحقة)
-CREATE TABLE IF NOT EXISTS payments (
+CREATE TABLE payments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
@@ -203,6 +203,6 @@ CREATE TABLE IF NOT EXISTS payments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_courses_teacher ON courses (teacher_id);
-CREATE INDEX IF NOT EXISTS idx_students_teacher ON students (teacher_id);
-CREATE INDEX IF NOT EXISTS idx_promo_teacher ON promo_codes (teacher_id);
+CREATE INDEX idx_courses_teacher ON courses (teacher_id);
+CREATE INDEX idx_students_teacher ON students (teacher_id);
+CREATE INDEX idx_promo_teacher ON promo_codes (teacher_id);

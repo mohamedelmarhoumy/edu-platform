@@ -32,8 +32,8 @@ FORM_ARGS=()
 while IFS="=" read -r key value; do
   FORM_ARGS+=(-F "${key}=${value}")
 done < <(node -e "
-const c = require('$CREDS_FILE').clientPayload;
-for (const [k, v] of Object.entries(c)) if (k !== 'uploadLink') console.log(k + '=' + v);
+const c = require('$CREDS_FILE').clientPayload.parameters;
+for (const [k, v] of Object.entries(c)) console.log(k + '=' + v);
 ")
 
 echo "جارٍ رفع الملف إلى VdoCipher..."
